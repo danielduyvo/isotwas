@@ -15,6 +15,11 @@
 #' @param tx_names vector, character vector of tx names in order of columns of Y
 #' @param seed int, random seed
 #' @param nfolds.int int, folds for joinet's inner cross-validation.
+#' @param folds optional cross-validation folds: a list with one vector of
+#'   training-row indices per fold, or a vector of fold labels 1..K, one per
+#'   sample. NULL (the default) draws them from \code{seed} as before;
+#'   compute_isotwas passes every method the same folds.
+#'   They are the external folds; the inner folds are drawn within them.
 #'
 #' @details
 #' joinet is the most expensive method at moderate transcript counts, and most
@@ -42,7 +47,8 @@ multivariate_joinet <- function(X,
                                 n.cores = NULL,
                                 tx_names = NULL,
                                 seed,
-                                nfolds.int = 10){
+                                nfolds.int = 10,
+                                folds = NULL){
 
   if (!is.null(colnames(Y))){
     tx_names = colnames(Y)
@@ -57,6 +63,12 @@ multivariate_joinet <- function(X,
     colnames(Y) = tx_names
   }
 
+  # Given folds (compute_isotwas's shared ones) are joinet's external folds
+  foldid.ext = NULL
+  if (!is.null(folds)) {
+    foldid.ext = .as_folds(folds, nrow(X))$foldid
+  }
+
   if (par){
     doParallel::registerDoParallel(n.cores)
     set.seed(seed)
@@ -64,6 +76,7 @@ multivariate_joinet <- function(X,
                                X = X,
                                family="gaussian",
                                nfolds.ext=nfolds,
+                               foldid.ext=foldid.ext,
                                nfolds.int=nfolds.int,
                                alpha.base=alpha,
                                alpha.meta=alpha,
@@ -77,6 +90,7 @@ multivariate_joinet <- function(X,
                                X = X,
                                family="gaussian",
                                nfolds.ext=nfolds,
+                               foldid.ext=foldid.ext,
                                nfolds.int=nfolds.int,
                                alpha.base=alpha,
                                alpha.meta=alpha,
