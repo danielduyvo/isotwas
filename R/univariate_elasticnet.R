@@ -15,6 +15,11 @@
 #' @param n.cores int, number of parallel cores
 #' @param tx_names vector, character vector of tx names in order of columns of Y
 #' @param seed int, random seed
+#' @param folds optional cross-validation folds: a list with one vector of
+#'   training-row indices per fold, or a vector of fold labels 1..K, one per
+#'   sample. NULL (the default) draws them from \code{seed} as before;
+#'   compute_isotwas passes every method the same folds.
+#'   Every transcript then uses these folds.
 #'
 #' @return data frame of elastic net, lasso, and LMM based predictions
 #'
@@ -36,7 +41,8 @@ univariate_elasticnet <- function(X,
                                   par = F,
                                   n.cores = NULL,
                                   tx_names = NULL,
-                                  seed){
+                                  seed,
+                                  folds = NULL){
 
     if (!is.null(colnames(Y))){
         tx_names = colnames(Y)
@@ -51,12 +57,20 @@ univariate_elasticnet <- function(X,
         colnames(Y) = tx_names
         }
 
+    # Given folds (compute_isotwas's shared ones), every transcript uses
+    # them; otherwise each cv.glmnet call draws its own
+    foldid = NULL
+    if (!is.null(folds)) {
+        foldid = .as_folds(folds, nrow(X))$foldid
+    }
+
     if (par){
         models = .mclapply_seeded(lapply(seq_len(ncol(Y)), function(i) Y[,i]),
                                   FUN = function(y) glmnet::cv.glmnet(
                                       x = X,
                                       y = y,
                                       nfolds = nfolds,
+                                      foldid = foldid,
                                       keep = T,
                                       intercept = T,
                                       family = family,
@@ -70,6 +84,7 @@ univariate_elasticnet <- function(X,
                                       MARGIN = 2,
                                       x = X,
                                       nfolds = nfolds,
+                                      foldid = foldid,
                                       keep = T,
                                       intercept = T,
                                       family = family,
@@ -81,6 +96,7 @@ univariate_elasticnet <- function(X,
                        2,
                        x = X,
                        nfolds = nfolds,
+                       foldid = foldid,
                        keep = T,
                        intercept = T,
                        family = family,
