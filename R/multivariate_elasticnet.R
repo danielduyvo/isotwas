@@ -14,6 +14,11 @@
 #' @param n.cores int, number of parallel cores
 #' @param tx_names vector, character vector of tx names in order of columns of Y
 #' @param seed int, random seed
+#' @param folds optional cross-validation folds: a list with one vector of
+#'   training-row indices per fold, or a vector of fold labels 1..K, one per
+#'   sample. NULL (the default) draws them from \code{seed} as before;
+#'   compute_isotwas passes every method the same folds.
+#'   All three alphas then use these folds.
 #'
 #' @return data frame of elastic net, lasso, and LMM based predictions
 #'
@@ -34,7 +39,8 @@ multivariate_elasticnet <- function(X,
                                     par = F,
                                     n.cores = NULL,
                                     tx_names = NULL,
-                                    seed){
+                                    seed,
+                                    folds = NULL){
 
     if (!is.null(colnames(Y))){
         tx_names = colnames(Y)
@@ -49,6 +55,13 @@ multivariate_elasticnet <- function(X,
         colnames(Y) = tx_names
     }
 
+    # Given folds (compute_isotwas's shared ones), all three alphas use
+    # them; otherwise each cv.glmnet call draws its own
+    foldid = NULL
+    if (!is.null(folds)) {
+        foldid = .as_folds(folds, nrow(X))$foldid
+    }
+
     if (par){
         doParallel::registerDoParallel(n.cores)
         set.seed(seed)
@@ -56,6 +69,7 @@ multivariate_elasticnet <- function(X,
         models_0 = glmnet::cv.glmnet(x = X,
                                      y = as.matrix(Y),
                                      nfolds = nfolds,
+                                     foldid = foldid,
                                      parallel = par,
                                      family = 'mgaussian',
                                      keep = T,
@@ -67,6 +81,7 @@ multivariate_elasticnet <- function(X,
         models_5 = glmnet::cv.glmnet(x = X,
                                      y = as.matrix(Y),
                                      nfolds = nfolds,
+                                     foldid = foldid,
                                      parallel = par,
                                      family = 'mgaussian',
                                      keep = T,
@@ -78,6 +93,7 @@ multivariate_elasticnet <- function(X,
         models_1 = glmnet::cv.glmnet(x = X,
                                    y = as.matrix(Y),
                                    nfolds = nfolds,
+                                   foldid = foldid,
                                    parallel = par,
                                    family = 'mgaussian',
                                    keep = T,
@@ -91,6 +107,7 @@ multivariate_elasticnet <- function(X,
       models_0 = glmnet::cv.glmnet(x = X,
                                    y = as.matrix(Y),
                                    nfolds = nfolds,
+                                   foldid = foldid,
                                    parallel = par,
                                    family = 'mgaussian',
                                    keep = T,
@@ -102,6 +119,7 @@ multivariate_elasticnet <- function(X,
       models_5 = glmnet::cv.glmnet(x = X,
                                    y = as.matrix(Y),
                                    nfolds = nfolds,
+                                   foldid = foldid,
                                    parallel = par,
                                    family = 'mgaussian',
                                    keep = T,
@@ -113,6 +131,7 @@ multivariate_elasticnet <- function(X,
       models_1 = glmnet::cv.glmnet(x = X,
                                    y = as.matrix(Y),
                                    nfolds = nfolds,
+                                   foldid = foldid,
                                    parallel = par,
                                    family = 'mgaussian',
                                    keep = T,
